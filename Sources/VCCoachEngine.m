@@ -3,10 +3,14 @@
 #import "VCScreenCapture.h"
 #import "VCOCRService.h"
 #import "VCOllamaClient.h"
+#import "VCClaudeClient.h"
+#import "VCConversationStore.h"
 #import "VCCoachingResult.h"
 #import "VCOverlayController.h"
 #import "VCDrawCanvasController.h"
 #import "VCMemoryStore.h"
+
+static NSString * const kVCUseClaudeBackendKey = @"VCUseClaudeBackend";
 
 @interface VCCoachEngine ()
 @property (nonatomic, strong) VCOverlayController *overlay;
@@ -90,6 +94,42 @@
 
 - (void)clearLearnedContext {
     [[VCMemoryStore shared] clearAll];
+    [[VCConversationStore shared] clearAll];
+}
+
+#pragma mark - Claude backend
+
+- (BOOL)claudeBackendEnabled {
+    return [[NSUserDefaults standardUserDefaults] boolForKey:kVCUseClaudeBackendKey];
+}
+
+- (BOOL)toggleClaudeBackend {
+    BOOL enabled = ![self claudeBackendEnabled];
+    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:kVCUseClaudeBackendKey];
+    if (enabled && [VCClaudeClient storedAPIKey].length == 0) {
+        [self configureClaudeAPIKey];
+    }
+    return enabled;
+}
+
+- (void)configureClaudeAPIKey {
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = @"Claude API Key";
+    alert.informativeText = @"Stored in your macOS Keychain and sent only to api.anthropic.com. "
+                            "With the Claude backend enabled, screenshots leave this Mac.";
+    [alert addButtonWithTitle:@"Save"];
+    [alert addButtonWithTitle:@"Cancel"];
+
+    NSSecureTextField *field = [[NSSecureTextField alloc] initWithFrame:NSMakeRect(0, 0, 340, 24)];
+    field.placeholderString = @"sk-ant-…";
+    alert.accessoryView = field;
+    alert.window.initialFirstResponder = field;
+
+    [NSApp activateIgnoringOtherApps:YES];
+    if ([alert runModal] != NSAlertFirstButtonReturn) return;
+    NSString *key = [field.stringValue stringByTrimmingCharactersInSet:
+                     [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (key.length) [VCClaudeClient saveAPIKey:key];
 }
 
 #pragma mark - Pipeline
@@ -100,17 +140,18 @@
     NSScreen *screen = [VCScreenCapture screenForDisplayID:snapshot.displayID] ?: NSScreen.mainScreen;
     [self.overlay showProgress:@"Analyzing screen…" onScreen:screen];
 
+    BOOL useClaude = [self claudeBackendEnabled];
     [VCOCRService recognizeTextInImage:snapshot.image completion:^(NSArray<VCOCRLine *> *lines, NSError *ocrError) {
+        // With Claude, the conversation history carries prior context, so the
+        // prompt skips the memory recap the stateless Ollama path needs.
         NSString *userPrompt = [self userPromptForSnapshot:snapshot
                                                   ocrLines:lines
                                                   question:question
-                                              markedRegion:region];
+                                              markedRegion:region
+                                             includeMemory:!useClaude];
         NSData *png = [snapshot pngDataWithMaxDimension:1600];
 
-        [VCOllamaClient sendChatWithSystemPrompt:[self systemPrompt]
-                                      userPrompt:userPrompt
-                                        imagePNG:png
-                                      completion:^(NSString *content, NSError *error) {
+        void (^handleContent)(NSString *, NSError *) = ^(NSString *content, NSError *error) {
             self.busy = NO;
             if (!content) {
                 [self showTransientError:error];
@@ -128,8 +169,33 @@
                                           goal:result.inferredGoal
                                        message:result.message
                                  forContextKey:snapshot.contextKey];
+            if (useClaude) {
+                NSString *userTurn = [NSString stringWithFormat:@"[%@ — %@] %@",
+                                      snapshot.appName ?: @"Unknown",
+                                      snapshot.windowTitle ?: @"",
+                                      question.length ? question : @"Analyze my screen and suggest the next step."];
+                NSString *assistantTurn = [NSString stringWithFormat:@"context: %@ | goal: %@ | next step: %@",
+                                           result.context ?: @"", result.inferredGoal ?: @"", result.message ?: @""];
+                [[VCConversationStore shared] appendUserText:userTurn
+                                               assistantText:assistantTurn
+                                               forContextKey:snapshot.contextKey];
+            }
             [self.overlay showResult:result onScreen:screen];
-        }];
+        };
+
+        if (useClaude) {
+            NSArray *history = [[VCConversationStore shared] messagesForContextKey:snapshot.contextKey];
+            [VCClaudeClient sendChatWithSystemPrompt:[self systemPrompt]
+                                             history:history
+                                          userPrompt:userPrompt
+                                            imagePNG:png
+                                          completion:handleContent];
+        } else {
+            [VCOllamaClient sendChatWithSystemPrompt:[self systemPrompt]
+                                          userPrompt:userPrompt
+                                            imagePNG:png
+                                          completion:handleContent];
+        }
     }];
 }
 
@@ -159,12 +225,14 @@
 - (NSString *)userPromptForSnapshot:(VCScreenSnapshot *)snapshot
                            ocrLines:(NSArray<VCOCRLine *> *)lines
                            question:(NSString *)question
-                       markedRegion:(NSValue *)region {
+                       markedRegion:(NSValue *)region
+                      includeMemory:(BOOL)includeMemory {
     NSMutableString *prompt = [NSMutableString string];
     [prompt appendFormat:@"Foreground application: %@\n", snapshot.appName ?: @"Unknown"];
     [prompt appendFormat:@"Window title: %@\n", snapshot.windowTitle ?: @"Unknown"];
 
-    NSArray<NSDictionary *> *memory = [[VCMemoryStore shared] entriesForContextKey:snapshot.contextKey];
+    NSArray<NSDictionary *> *memory = includeMemory
+        ? [[VCMemoryStore shared] entriesForContextKey:snapshot.contextKey] : @[];
     if (memory.count) {
         [prompt appendString:@"\nPrior coaching for this window (oldest first):\n"];
         for (NSDictionary *entry in memory) {

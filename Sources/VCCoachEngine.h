@@ -7,4 +7,9 @@
 - (void)hideGuidance;           // Control-Option-H
 - (void)askQuestionFromMenu;    // menu-bar prompt
 - (void)clearLearnedContext;
+
+/// Claude backend (optional cloud mode with persistent conversation context).
+- (BOOL)claudeBackendEnabled;
+- (BOOL)toggleClaudeBackend;    // returns the new state
+- (void)configureClaudeAPIKey;
 @end

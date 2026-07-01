@@ -8,9 +8,10 @@ click-through overlay — without switching to a chat app.
 - **Platform:** macOS 14+
 - **Bundle ID:** `local.codex.visualcoach.agent`
 
-Everything runs on your Mac: screenshots stay local, requests go only to a
-local [Ollama](https://ollama.com) server. No analytics, cloud storage,
-accounts, or API keys.
+By default everything runs on your Mac: screenshots stay local, requests go
+only to a local [Ollama](https://ollama.com) server, and no accounts or API
+keys are needed. An optional, off-by-default Claude API backend adds
+persistent conversation context — see "Claude backend" below.
 
 ## Hotkeys
 
@@ -71,6 +72,26 @@ On first use, grant **Screen Recording** permission when macOS prompts
 question mark over anything; press **Return** (or click **Ask About Mark**)
 and type your question. The normalized bounds of the marked region are sent
 with the question. **Escape** or **Cancel** exits.
+
+### Claude backend (optional)
+
+By default everything runs locally through Ollama. Enabling **Use Claude
+(Cloud)** in the menu switches coaching to the Claude API
+(`claude-opus-4-8`) with two upgrades:
+
+- **Persistent conversation context** — each coaching exchange for a window
+  is kept as real conversation history (up to six exchanges per window,
+  stored locally) and replayed on the next trigger, so follow-ups remember
+  what was already discussed.
+- **Schema-enforced output** — structured outputs guarantee the guidance
+  JSON is always valid.
+
+Set your key via **Set Claude API Key…** (stored in the macOS Keychain;
+`ANTHROPIC_API_KEY` in the environment also works when launching from a
+terminal). **Privacy trade-off:** with this backend enabled, screenshots are
+sent to `api.anthropic.com` instead of staying on the Mac. It is off by
+default; note that this is a conversation with the Claude API — it does not
+connect to or inherit history from the Claude app or claude.ai.
 
 ### Memory
 

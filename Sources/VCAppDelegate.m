@@ -6,6 +6,7 @@
 @property (nonatomic, strong) NSStatusItem *statusItem;
 @property (nonatomic, strong) VCHotkeyManager *hotkeys;
 @property (nonatomic, strong) VCCoachEngine *engine;
+@property (nonatomic, strong) NSMenuItem *claudeToggleItem;
 @end
 
 @implementation VCAppDelegate
@@ -38,13 +39,22 @@
                                       action:@selector(askQuestion:)
                                keyEquivalent:@""];
     [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *claude = [menu addItemWithTitle:@"Use Claude (Cloud)"
+                                         action:@selector(toggleClaude:)
+                                  keyEquivalent:@""];
+    claude.state = self.engine.claudeBackendEnabled ? NSControlStateValueOn : NSControlStateValueOff;
+    self.claudeToggleItem = claude;
+    NSMenuItem *apiKey = [menu addItemWithTitle:@"Set Claude API Key…"
+                                         action:@selector(setClaudeAPIKey:)
+                                  keyEquivalent:@""];
+    [menu addItem:[NSMenuItem separatorItem]];
     NSMenuItem *clear = [menu addItemWithTitle:@"Clear Learned Context"
                                         action:@selector(clearContext:)
                                  keyEquivalent:@""];
     [menu addItem:[NSMenuItem separatorItem]];
     [menu addItemWithTitle:@"Quit Visual Coach" action:@selector(terminate:) keyEquivalent:@"q"];
 
-    for (NSMenuItem *item in @[analyze, draw, hide, ask, clear]) {
+    for (NSMenuItem *item in @[analyze, draw, hide, ask, claude, apiKey, clear]) {
         item.target = self;
     }
     self.statusItem.menu = menu;
@@ -82,6 +92,15 @@
 
 - (void)askQuestion:(id)sender {
     [self.engine askQuestionFromMenu];
+}
+
+- (void)toggleClaude:(id)sender {
+    BOOL enabled = [self.engine toggleClaudeBackend];
+    self.claudeToggleItem.state = enabled ? NSControlStateValueOn : NSControlStateValueOff;
+}
+
+- (void)setClaudeAPIKey:(id)sender {
+    [self.engine configureClaudeAPIKey];
 }
 
 - (void)clearContext:(id)sender {

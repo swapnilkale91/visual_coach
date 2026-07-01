@@ -5,7 +5,7 @@ BINARY     = $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 SOURCES    = $(wildcard Sources/*.m)
 HEADERS    = $(wildcard Sources/*.h)
 FRAMEWORKS = -framework Cocoa -framework Carbon -framework ScreenCaptureKit \
-             -framework Vision -framework CoreGraphics
+             -framework Vision -framework CoreGraphics -framework Security
 CFLAGS     = -fobjc-arc -fmodules -mmacosx-version-min=14.0 -Wall \
              -Wno-deprecated-declarations
 
