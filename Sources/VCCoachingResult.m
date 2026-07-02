@@ -93,16 +93,31 @@ static double VCDoubleOrNAN(id value) {
 }
 
 - (VCOCRLine *)bestOCRMatchForLabel:(NSString *)label inLines:(NSArray<VCOCRLine *> *)lines {
-    NSString *needle = label.lowercaseString;
+    NSString *needle = [label.lowercaseString stringByTrimmingCharactersInSet:
+                        [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (needle.length < 3) return nil;
+
+    // Exact matches beat partial ones, and partial matches are scored by how
+    // much of the longer string they cover — so a short fragment ("order")
+    // can no longer hijack a long label from a better line elsewhere.
     VCOCRLine *best = nil;
-    NSUInteger bestLength = 0;
+    double bestScore = 0;
     for (VCOCRLine *line in lines) {
         NSString *hay = [line.text.lowercaseString stringByTrimmingCharactersInSet:
                          [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (hay.length < 3) continue;
-        if (([needle containsString:hay] || [hay containsString:needle]) && hay.length > bestLength) {
+        if (hay.length < 4) continue;
+
+        double score = 0;
+        if ([hay isEqualToString:needle]) {
+            score = 3.0;
+        } else if ([needle containsString:hay]) {
+            score = 1.0 + (double)hay.length / (double)needle.length;
+        } else if ([hay containsString:needle]) {
+            score = 1.0 + (double)needle.length / (double)hay.length;
+        }
+        if (score > bestScore) {
+            bestScore = score;
             best = line;
-            bestLength = hay.length;
         }
     }
     return best;

@@ -109,17 +109,18 @@
 }
 
 - (void)drawArrowTo:(NSPoint)target label:(NSString *)label index:(NSInteger)index {
-    // Start the arrow 160 px back toward the screen center so it points inward.
+    // Short tail back toward the screen center so the arrow points inward
+    // without sweeping across unrelated UI.
     NSPoint center = NSMakePoint(NSMidX(self.bounds), NSMidY(self.bounds));
     CGFloat dx = target.x - center.x, dy = target.y - center.y;
     CGFloat length = MAX(1, hypot(dx, dy));
-    NSPoint start = NSMakePoint(target.x - dx / length * 160, target.y - dy / length * 160);
+    NSPoint start = NSMakePoint(target.x - dx / length * 110, target.y - dy / length * 110);
 
     NSPoint mid = NSMakePoint((start.x + target.x) / 2, (start.y + target.y) / 2);
     NSPoint perpendicular = NSMakePoint(-(target.y - start.y), target.x - start.x);
     CGFloat perpendicularLength = MAX(1, hypot(perpendicular.x, perpendicular.y));
-    NSPoint control = NSMakePoint(mid.x + perpendicular.x / perpendicularLength * 40,
-                                  mid.y + perpendicular.y / perpendicularLength * 40);
+    NSPoint control = NSMakePoint(mid.x + perpendicular.x / perpendicularLength * 28,
+                                  mid.y + perpendicular.y / perpendicularLength * 28);
 
     NSBezierPath *curve = [NSBezierPath bezierPath];
     curve.lineWidth = 4;
@@ -144,7 +145,8 @@
 }
 
 - (void)drawRingAt:(NSPoint)point annotation:(VCAnnotation *)annotation {
-    CGFloat radius = MAX(20, annotation.size.width * self.bounds.size.width / 2 + 12);
+    // Clamp both ways: OCR matches on long lines produce huge widths otherwise.
+    CGFloat radius = MIN(90, MAX(20, annotation.size.width * self.bounds.size.width / 2 + 12));
     for (CGFloat r = radius; r <= radius + 8; r += 8) {
         NSBezierPath *ring = [NSBezierPath bezierPathWithOvalInRect:
                               NSMakeRect(point.x - r, point.y - r, r * 2, r * 2)];
