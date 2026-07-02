@@ -53,6 +53,24 @@
     return png;
 }
 
+- (NSData *)pngDataForNormalizedRect:(CGRect)rect maxDimension:(CGFloat)maxDimension {
+    size_t width = CGImageGetWidth(_image);
+    size_t height = CGImageGetHeight(_image);
+    CGRect pixelRect = CGRectMake(floor(rect.origin.x * width),
+                                  floor(rect.origin.y * height),
+                                  ceil(rect.size.width * width),
+                                  ceil(rect.size.height * height));
+    pixelRect = CGRectIntersection(pixelRect, CGRectMake(0, 0, width, height));
+    if (CGRectIsEmpty(pixelRect) || pixelRect.size.width < 4 || pixelRect.size.height < 4) {
+        return nil;
+    }
+    CGImageRef cropped = CGImageCreateWithImageInRect(_image, pixelRect);
+    if (!cropped) return nil;
+    VCScreenSnapshot *cropSnapshot = [[VCScreenSnapshot alloc] initWithImage:cropped];
+    CGImageRelease(cropped);
+    return [cropSnapshot pngDataWithMaxDimension:maxDimension];
+}
+
 @end
 
 @implementation VCScreenCapture

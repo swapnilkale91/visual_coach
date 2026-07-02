@@ -7,5 +7,8 @@ typedef void (^VCDrawCompletion)(BOOL submitted, CGRect normalizedRegion, BOOL h
 /// The normalized bounds of the mark (top-left origin) are handed back —
 /// the clean screenshot must be captured before this canvas appears.
 @interface VCDrawCanvasController : NSObject
+@property (nonatomic, readonly, getter=isActive) BOOL active;
 - (void)beginOnScreen:(NSScreen *)screen completion:(VCDrawCompletion)completion;
+/// Dismisses the canvas as if the user pressed Escape (completion fires with submitted=NO).
+- (void)cancel;
 @end

@@ -119,6 +119,14 @@
 
 @implementation VCDrawCanvasController
 
+- (BOOL)isActive {
+    return self.window != nil;
+}
+
+- (void)cancel {
+    [self finishSubmitted:NO];
+}
+
 - (void)beginOnScreen:(NSScreen *)screen completion:(VCDrawCompletion)completion {
     if (self.window) return; // already active
     self.completion = completion;

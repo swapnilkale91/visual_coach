@@ -93,6 +93,45 @@ sent to `api.anthropic.com` instead of staying on the Mac. It is off by
 default; note that this is a conversation with the Claude API — it does not
 connect to or inherit history from the Claude app or claude.ai.
 
+### Claude app integration (MCP)
+
+To keep using an **existing conversation in the Claude desktop app** while
+Visual Coach provides the eyes and hands, the app hosts a local MCP server.
+Tools called from any Claude chat run against your screen, and the results
+flow back into that same conversation — context included.
+
+Add this to `~/Library/Application Support/Claude/claude_desktop_config.json`
+(adjust the path to wherever the built app lives), then restart the Claude
+app:
+
+```json
+{
+  "mcpServers": {
+    "visual-coach": {
+      "command": "/path/to/visual_coach/build/VisualCoach.app/Contents/MacOS/VisualCoach",
+      "args": ["--mcp-relay"]
+    }
+  }
+}
+```
+
+The relay auto-launches the menu-bar app if it isn't running (via
+LaunchServices, so Screen Recording permission stays attributed to Visual
+Coach, not the Claude app). Tools exposed:
+
+| Tool | What it does |
+| --- | --- |
+| `capture_screen` | Screenshot of the display under the pointer + frontmost app/window metadata |
+| `get_marked_region` | Opens the Draw & Ask canvas, waits for you to circle something (Return confirms), returns the marked region |
+| `show_guidance` | Draws Claude's arrows/rings/highlights and a next-step card on the click-through overlay, OCR-grounded against the last capture |
+| `hide_guidance` | Clears the overlay |
+
+Example, inside any existing Claude conversation: *"Look at the part of my
+screen I'm about to circle and tell me what's wrong"* → Claude calls
+`get_marked_region`, the canvas appears, you circle and press Return, and the
+answer lands in your chat. Claude can then call `show_guidance` to point at
+the fix on your actual screen.
+
 ### Memory
 
 Up to six coaching results are kept per foreground window context (app +

@@ -1,7 +1,11 @@
 #import <Foundation/Foundation.h>
 
+@class VCOverlayController;
+
 /// Orchestrates the capture → OCR → Ollama → overlay pipeline.
 @interface VCCoachEngine : NSObject
+/// Shared with the MCP server so chat-driven guidance uses the same overlay.
+@property (nonatomic, strong, readonly) VCOverlayController *overlay;
 - (void)analyzeAutomatically;   // Control-Option-Space
 - (void)startDrawAndAsk;        // Control-Option-D
 - (void)hideGuidance;           // Control-Option-H

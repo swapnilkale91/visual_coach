@@ -1,11 +1,13 @@
 #import "VCAppDelegate.h"
 #import "VCHotkeyManager.h"
 #import "VCCoachEngine.h"
+#import "VCMCPServer.h"
 
 @interface VCAppDelegate () <VCHotkeyManagerDelegate>
 @property (nonatomic, strong) NSStatusItem *statusItem;
 @property (nonatomic, strong) VCHotkeyManager *hotkeys;
 @property (nonatomic, strong) VCCoachEngine *engine;
+@property (nonatomic, strong) VCMCPServer *mcpServer;
 @property (nonatomic, strong) NSMenuItem *claudeToggleItem;
 @end
 
@@ -17,6 +19,11 @@
     self.hotkeys.delegate = self;
     [self.hotkeys registerHotkeys];
     [self setUpStatusItem];
+
+    self.mcpServer = [[VCMCPServer alloc] initWithOverlay:self.engine.overlay];
+    if (![self.mcpServer start]) {
+        NSLog(@"VisualCoach: MCP server failed to start on %@", [VCMCPServer socketPath]);
+    }
 }
 
 - (void)setUpStatusItem {

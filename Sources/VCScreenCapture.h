@@ -13,6 +13,8 @@
 - (NSString *)contextKey;
 /// PNG for the model, downscaled so the longest side is at most maxDimension pixels.
 - (NSData *)pngDataWithMaxDimension:(CGFloat)maxDimension;
+/// PNG of a sub-region (normalized 0–1, top-left origin). Nil if the crop is degenerate.
+- (NSData *)pngDataForNormalizedRect:(CGRect)rect maxDimension:(CGFloat)maxDimension;
 @end
 
 @interface VCScreenCapture : NSObject
